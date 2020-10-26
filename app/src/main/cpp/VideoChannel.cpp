@@ -182,7 +182,7 @@ void VideoChannel::_play() {
                   frame->height, data, linesize);
 
         _onDraw(data, linesize, avCodecContext->width, avCodecContext->height);
-
+        releaseAvFrame(frame);
     }
 
     av_free(&data[0]);

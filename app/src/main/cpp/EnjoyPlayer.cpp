@@ -14,7 +14,6 @@ void *prepare_t(void *args) {
 
 EnjoyPlayer::EnjoyPlayer(JavaCallHelper *helper) : helper(helper) {
     avformat_network_init();
-    videoChannel = 0;
 }
 
 void EnjoyPlayer::setDataSource(const char *path_) {
@@ -22,6 +21,10 @@ void EnjoyPlayer::setDataSource(const char *path_) {
 //    path = static_cast<char *>(malloc(strlen(path_) + 1));
 //    memset((void *)path,0,strlen(path_)+1);
 //    memcpy(path,path_,strlen(path_))
+
+    if (path) {
+        delete[] path;
+    }
     path = new char[strlen(path_) + 1];
     strcpy(path, path_);
 }
@@ -83,7 +86,7 @@ void EnjoyPlayer::_prepare() {
 
         // 多线程解码
         if (parameters->codec_type == AVMEDIA_TYPE_VIDEO) {
-            codecContext->thread_count = 2;
+            codecContext->thread_count = 8;
         } else if (parameters->codec_type == AVMEDIA_TYPE_AUDIO) {
             codecContext->thread_count = 1;
         }
@@ -139,6 +142,7 @@ void EnjoyPlayer::start() {
     //2.根据数据类型放入Audio/VideoChannel的队列中
     isPlaying = 1;
     if (videoChannel) {
+        videoChannel->audioChannel = audioChannel;
         videoChannel->play();
     }
     if (audioChannel) {

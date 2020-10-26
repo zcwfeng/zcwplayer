@@ -3,9 +3,9 @@ cmake_minimum_required(VERSION 3.10.2)
 aux_source_directory(. SOURCE)
 
 add_library(
-             native-lib
-             SHARED
-             ${SOURCE} )
+        native-lib
+        SHARED
+        ${SOURCE})
 
 
 # 设置变量
