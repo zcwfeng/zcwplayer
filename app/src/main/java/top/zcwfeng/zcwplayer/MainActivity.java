@@ -20,7 +20,9 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         setContentView(viewBinding.getRoot());
         viewBinding.surfaceView.getHolder().addCallback(this);
         player = new EnjoyPlayer();
-        player.setDataSource("/sdcard/play1.mp4");
+//        player.setDataSource("/sdcard/play1.mp4");
+//        player.setDataSource("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_4x3/gear2/prog_index.m3u8");
+        player.setDataSource("http://ivi.bupt.edu.cn/hls/cctv1hd.m3u8");
 //        player.setDataSource("http://91.9p9.xyz/ev.php?VID=7201Nz2yvV2QBsfERGkxn0PtHCjt5P3vvloEehVK07PbQtfZ");
 //        player.setDataSource("http://tx.hls.huya.com/huyalive/89530005-89530005-384528443485716480-21619896-10057-A-0-1.m3u8");
         player.setOnPrepareListener(new EnjoyPlayer.OnPrepareListener() {

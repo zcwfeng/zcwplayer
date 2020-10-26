@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include "JavaCallHelper.h"
 #include "VideoChannel.h"
+#include "AudioChannel.h"
 #include <android/native_window_jni.h>
 
 extern "C" {
@@ -43,6 +44,7 @@ private:
     JavaCallHelper *helper;
     int64_t duration;
     VideoChannel *videoChannel;
+    AudioChannel *audioChannel;
     pthread_t startTask;
     bool isPlaying;
     AVFormatContext *avFormatContext;

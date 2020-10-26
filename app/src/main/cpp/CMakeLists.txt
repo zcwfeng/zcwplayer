@@ -18,7 +18,7 @@ include_directories(include)
 
 target_link_libraries(
         native-lib
-        avfilter avformat avcodec avutil swresample swscale rtmp android z
+        avfilter avformat avcodec avutil swresample swscale rtmp android z OpenSLES
         log
 )
 

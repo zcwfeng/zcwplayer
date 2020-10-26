@@ -168,6 +168,26 @@ void VideoChannel::onDraw(uint8_t **data, int *linesize, int width, int height) 
     uint8_t *srcData = data[0];
     int srcSize = linesize[0];
 
+    /*
+     * window: 4x4,8 位
+     * ffmpeg: 4x4,4
+     *
+     * window
+     * [
+     * x,x,x,x,x,x,x,x,
+     * x,x,x,x,x,x,x,x
+     * x,x,x,x,x,x,x,x
+     * x,x,x,x,x,x,x,x
+     * ]
+     *
+     * 我们有效数据是前4个，所以ffmpeg取每行的前四个，一行一行的赋值，画这个图片
+     *
+     *
+     *
+     */
+
+
+
     // 一行一行拷贝，ffmpeg原始数据和对齐后数据可能不一样
     for (int i = 0; i < buffer.height; ++i) {
         memcpy(dstData + i * dstSize, srcData + i * srcSize, srcSize);

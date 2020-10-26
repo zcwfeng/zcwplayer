@@ -87,7 +87,7 @@ void EnjoyPlayer::_prepare() {
         }
         // 判断是音频还是视频
         if (parameters->codec_type == AVMEDIA_TYPE_AUDIO) {
-
+            audioChannel = new AudioChannel(i, helper, codecContext, avStream->time_base);
         } else if (parameters->codec_type == AVMEDIA_TYPE_VIDEO) {
             //avg_frame_rate 平均帧率
             int fps = av_q2d(avStream->avg_frame_rate);
@@ -97,7 +97,7 @@ void EnjoyPlayer::_prepare() {
 
     }
     //TODO 未处理音频
-    if (!videoChannel) {
+    if (!videoChannel && !audioChannel) {
         helper->onError(FFMPEG_NOMEDIA, THREAD_CHILD);
         return;
     }
@@ -121,6 +121,9 @@ void EnjoyPlayer::start() {
     if(videoChannel){
         videoChannel->play();
     }
+    if(audioChannel){
+        audioChannel->play();
+    }
     pthread_create(&startTask, 0, start_t, this);
 }
 
@@ -134,6 +137,10 @@ void EnjoyPlayer::_start() {
         if (ret == 0) {
             if(videoChannel && avPacket->stream_index == videoChannel->channelId){
                 videoChannel->pkt_queue.enQueue(avPacket);
+            } else if(audioChannel && avPacket->stream_index == audioChannel->channelId){
+                audioChannel->pkt_queue.enQueue(avPacket);
+            } else{
+                av_packet_free(&avPacket);
             }
         } else if (ret == AVERROR_EOF) {
             //读取完毕，但是不一定播放完毕，本地视频会出现
@@ -147,6 +154,7 @@ void EnjoyPlayer::_start() {
     }
     isPlaying = 0;
     videoChannel->stop();
+    audioChannel->stop();
 }
 
 void EnjoyPlayer::setWindow(ANativeWindow *window) {
