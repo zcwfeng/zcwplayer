@@ -27,11 +27,16 @@ public:
 
     void setWindow(ANativeWindow *window);
 
+    virtual ~EnjoyPlayer();
+
 public:
     void prepare();
 
     void setDataSource(const char *path);
 
+    void stop();
+
+    void release();
 
 private:
     void _prepare();
@@ -40,14 +45,13 @@ private:
 
 private:
     char *path;
-    pthread_t prepareTask;
+    pthread_t prepareTask, startTask;
     JavaCallHelper *helper;
     int64_t duration;
-    VideoChannel *videoChannel;
-    AudioChannel *audioChannel;
-    pthread_t startTask;
+    VideoChannel *videoChannel = 0;
+    AudioChannel *audioChannel = 0;
     bool isPlaying;
-    AVFormatContext *avFormatContext;
+    AVFormatContext *avFormatContext = 0;
     ANativeWindow *window = 0;
 };
 

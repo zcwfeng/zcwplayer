@@ -56,3 +56,11 @@ Java_top_zcwfeng_zcwplayer_EnjoyPlayer_setSurface(JNIEnv *env,
     player->setWindow(window);
 
 }
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_top_zcwfeng_zcwplayer_EnjoyPlayer_stop(JNIEnv *env, jobject thiz, jlong native_handle) {
+    EnjoyPlayer *player = reinterpret_cast<EnjoyPlayer *>(native_handle);
+    player->stop();
+    delete player;
+}

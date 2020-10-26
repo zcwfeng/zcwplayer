@@ -3,6 +3,7 @@
 //
 
 #include "AudioChannel.h"
+#include "Log.h"
 
 
 void *audioDecode_t(void *args) {
@@ -20,7 +21,8 @@ void *audioPlay_t(void *args) {
 }
 
 AudioChannel::~AudioChannel() {
-
+    free(buffer);
+    buffer = 0;
 }
 
 AudioChannel::AudioChannel(int channelId,
@@ -58,28 +60,15 @@ void AudioChannel::play() {
 }
 
 void AudioChannel::stop() {
-////设置停止状态
-//    if (bqPlayerInterface) {
-//        (*bqPlayerInterface)->SetPlayState(bqPlayerInterface, SL_PLAYSTATE_STOPPED);
-//        bqPlayerInterface = 0;
-//    }
-////销毁播放器
-//    if (bqPlayerObject) {
-//        (*bqPlayerObject)->Destroy(bqPlayerObject);
-//        bqPlayerObject = 0;
-//        bqPlayerBufferQueue = 0;
-//    }
-////销毁混音器
-//    if (outputMixObject) {
-//        (*outputMixObject)->Destroy(outputMixObject);
-//        outputMixObject = 0;
-//    }
-////销毁引擎
-//    if (engineObject) {
-//        (*engineObject)->Destroy(engineObject);
-//        engineObject = 0;
-//        engineInterface = 0;
-//    }
+    isPlaying = 0;
+    helper = 0;
+    pthread_join(audioDecodeTask, 0);
+    pthread_join(audioPlayTask, 0);
+    _releaseOpenSL();
+    if (swrContext) {
+        swr_free(&swrContext);
+        swrContext = 0;
+    }
 }
 
 void AudioChannel::decode() {
@@ -112,7 +101,6 @@ void AudioChannel::decode() {
         }
         frame_queue.enQueue(frame);
     }
-//TODO 是否在这里释放
 }
 
 void bqPlayerCallback(SLAndroidSimpleBufferQueueItf queue, void *pContext) {
@@ -130,7 +118,6 @@ void AudioChannel::_play() {
      */
 
     // 创建引擎engineObject
-    SLObjectItf engineObject = NULL;
     SLresult result;
     result = slCreateEngine(&engineObject, 0, NULL, 0, NULL, NULL);
     if (SL_RESULT_SUCCESS != result) {
@@ -143,7 +130,6 @@ void AudioChannel::_play() {
         return;
     }
     // 获取引擎接口engineInterface
-    SLEngineItf engineInterface = NULL;
     result = (*engineObject)->GetInterface(engineObject,
                                            SL_IID_ENGINE, &engineInterface);
     if (SL_RESULT_SUCCESS != result) {
@@ -154,7 +140,6 @@ void AudioChannel::_play() {
      * 2 创建混音器
      */
     //通过引擎接口创建混音器
-    SLObjectItf outputMixObject = NULL;
     result = (*engineInterface)->CreateOutputMix(engineInterface, &outputMixObject, 0, 0, 0);
     if (SL_RESULT_SUCCESS != result) {
         return;
@@ -174,9 +159,9 @@ void AudioChannel::_play() {
             {SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, 2};
     //pcm数据格式: pcm、声道数、采样率、采样位、容器大小、通道掩码(双声道)、字节序(小端)
     SLDataFormat_PCM pcm = {SL_DATAFORMAT_PCM, 2, SL_SAMPLINGRATE_44_1,
-                            SL_PCMSAMPLEFORMAT_FIXED_16, SL_PCMSAMPLEFORMAT_FIXED_16,
-                            SL_SPEAKER_FRONT_LEFT |
-                            SL_SPEAKER_FRONT_RIGHT,
+                            SL_PCMSAMPLEFORMAT_FIXED_16,
+                            SL_PCMSAMPLEFORMAT_FIXED_16,
+                            SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT,
                             SL_BYTEORDER_LITTLEENDIAN};
 
     //数据源 （数据获取器+格式）  从哪里获得播放数据
@@ -189,7 +174,6 @@ void AudioChannel::_play() {
     //需要的接口
     const SLInterfaceID ids[1] = {SL_IID_BUFFERQUEUE};
     const SLboolean req[1] = {SL_BOOLEAN_TRUE};
-    SLObjectItf bqPlayerObject = NULL;
     //创建播放器
     (*engineInterface)->CreateAudioPlayer(engineInterface, &bqPlayerObject, &slDataSource,
                                           &audioSnk, 1,
@@ -203,14 +187,13 @@ void AudioChannel::_play() {
      */
 
     //获得播放数据队列操作接口
-    SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue = NULL;
     (*bqPlayerObject)->GetInterface(bqPlayerObject, SL_IID_BUFFERQUEUE,
                                     &bqPlayerBufferQueue);
     //设置回调(启动播放器后执行回调来获取数据并播放)
     (*bqPlayerBufferQueue)->RegisterCallback(bqPlayerBufferQueue, bqPlayerCallback, this);
 
     //获取播放状态接口
-    SLPlayItf bqPlayerInterface = NULL;
+
     (*bqPlayerObject)->GetInterface(bqPlayerObject, SL_IID_PLAY, &bqPlayerInterface);
     // 设置播放状态
     (*bqPlayerInterface)->SetPlayState(bqPlayerInterface, SL_PLAYSTATE_PLAYING);
@@ -237,9 +220,40 @@ int AudioChannel::_getData() {
         int nb = swr_convert(swrContext, &buffer, bufferCount,
                              (const uint8_t **) (frame->data), frame->nb_samples);
         dataSize = nb * out_channels * out_sampleSize;
+
+        // 播放这段音频的时间
+        clock = frame->pts * av_q2intfloat(time_base);
+        // 假设：time_base {1,20} <-> pst = 1/20 为单位 <->1 秒钟分成20份
+
         break;
     }
 
 
     return dataSize;
+}
+
+void AudioChannel::_releaseOpenSL() {
+    LOGE("停止播放");
+    //设置停止状态
+    if (bqPlayerInterface) {
+        (*bqPlayerInterface)->SetPlayState(bqPlayerInterface, SL_PLAYSTATE_STOPPED);
+        bqPlayerInterface = 0;
+    }
+    //销毁播放器
+    if (bqPlayerObject) {
+        (*bqPlayerObject)->Destroy(bqPlayerObject);
+        bqPlayerObject = 0;
+        bqPlayerBufferQueue = 0;
+    }
+    //销毁混音器
+    if (outputMixObject) {
+        (*outputMixObject)->Destroy(outputMixObject);
+        outputMixObject = 0;
+    }
+    //销毁引擎
+    if (engineObject) {
+        (*engineObject)->Destroy(engineObject);
+        engineObject = 0;
+        engineInterface = 0;
+    }
 }

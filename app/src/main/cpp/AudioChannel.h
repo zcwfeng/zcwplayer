@@ -38,6 +38,7 @@ public:
 private:
     void _play();
     int _getData();
+    void _releaseOpenSL();
 private:
     pthread_t audioDecodeTask, audioPlayTask;
     SwrContext *swrContext = 0;
@@ -45,6 +46,20 @@ private:
     int bufferCount;
     int out_channels;
     int out_sampleSize;
+
+
+    //混音器
+    SLObjectItf outputMixObject = NULL;
+    //播放数据队列操作接口
+    SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue = NULL;
+    // 获取引擎接口engineInterface
+    SLEngineItf engineInterface = NULL;
+    // 创建引擎engineObject
+    SLObjectItf engineObject = NULL;
+    SLObjectItf bqPlayerObject = NULL;
+    SLPlayItf bqPlayerInterface = NULL;
+
+
 };
 
 

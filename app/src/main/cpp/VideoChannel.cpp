@@ -3,12 +3,18 @@
 //
 
 #include "VideoChannel.h"
+#include "Log.h"
 
 extern "C" {
 #include <libswscale/swscale.h>
 #include <libavutil/rational.h>
 #include <libavutil/imgutils.h>
+#include <libavutil/time.h>
 };
+/* no AV sync correction is done if below the minimum AV sync threshold */
+#define AV_SYNC_THRESHOLD_MIN 0.04
+/* AV sync correction is done if above the maximum AV sync threshold */
+#define AV_SYNC_THRESHOLD_MAX 0.1
 
 VideoChannel::VideoChannel(int channelId, JavaCallHelper *helper, AVCodecContext *avCodecContext,
                            const AVRational &timeBase, int fps)
@@ -58,7 +64,13 @@ void VideoChannel::decode() {
 }
 
 void VideoChannel::stop() {
-
+    isPlaying = 0;
+    helper = 0;
+    pthread_join(videoDecodeTask, 0);
+    pthread_join(videoPlayTask, 0);
+    if (window) {
+        ANativeWindow_release(window);
+    }
 }
 
 void *videoDecode_t(void *args) {
@@ -113,6 +125,9 @@ void VideoChannel::_play() {
                    avCodecContext->height, AV_PIX_FMT_RGBA,
                    1);
     AVFrame *frame = 0;
+
+    double frame_delay = 1.0 / fps;
+
     int ret;
     while (isPlaying) {
         //阻塞方法
@@ -130,14 +145,43 @@ void VideoChannel::_play() {
         //B
         //A
         //byte[][]
-    // TODO 2、指针数据，比如RGBA，每一个维度的数据就是一个指针，那么RGBA需要4个指针，所以就是4个元素的数组，数组的元素就是指针，指针数据
-    //      3、每一行数据他的数据个数
-    //      4、 offset
-    //      5、 要转化图像的高
+        // ffmpeg 标准额外延时，视频顺畅的刷新
+        double extra_delay = frame->repeat_pict / (2 * fps);
+        double delay = extra_delay * frame_delay;
+        // 音视频同步
+        if (audioChannel) {
+            // 值：就是pts 和音频中的一样，pts  优化后的数据 best_effort_timestamp
+            clock = frame->best_effort_timestamp * av_q2d(time_base);
+            double diff = clock - audioChannel->clock;
+            // 给一个时间差允许范围，不需要太苛刻 ff_player 和ijk_player 参考0.04-0.1 秒 之间
+
+            /**
+             * 1.正常延迟时间delay < 0.04 同步阈值就是0.04
+             * 2.0.04 < delay < 0.1 同步阈值就是 delay
+             * 3. delay > 0.1 同步阈值就是 0.1
+             */
+            double sync = FFMAX(AV_SYNC_THRESHOLD_MIN, FFMIN(AV_SYNC_THRESHOLD_MAX, delay));
+            if (diff <= -sync) {
+                // 视频落后太多，需要同步，修改delay 时间，减小delay，赶上音频
+                delay = FFMAX(0, delay + diff);
+            } else if (diff >= sync) {
+                // 视频快乐，让delay 时间大一些，等待音频同步上来
+                delay = delay + diff;
+            }
+
+            LOGE("Video:%lf Audio:%lf delay:%lf A-V=%lf", clock, audioChannel->clock, delay, -diff);
+
+        }
+
+        av_usleep(delay * 1000000);
+        // TODO 2、指针数据，比如RGBA，每一个维度的数据就是一个指针，那么RGBA需要4个指针，所以就是4个元素的数组，数组的元素就是指针，指针数据
+        //      3、每一行数据他的数据个数
+        //      4、 offset
+        //      5、 要转化图像的高
         sws_scale(swsContext, frame->data, frame->linesize, 0,
                   frame->height, data, linesize);
 
-        onDraw(data, linesize, avCodecContext->width, avCodecContext->height);
+        _onDraw(data, linesize, avCodecContext->width, avCodecContext->height);
 
     }
 
@@ -147,7 +191,7 @@ void VideoChannel::_play() {
     sws_freeContext(swsContext);
 }
 
-void VideoChannel::onDraw(uint8_t **data, int *linesize, int width, int height) {
+void VideoChannel::_onDraw(uint8_t **Data, int *linesize, int width, int height) {
     pthread_mutex_lock(&surfaceMutex);
     if (!window) {
         pthread_mutex_lock(&surfaceMutex);
@@ -165,7 +209,7 @@ void VideoChannel::onDraw(uint8_t **data, int *linesize, int width, int height) 
     //将视频数据刷到buffer
     uint8_t *dstData = static_cast<uint8_t *>(buffer.bits);
     int dstSize = buffer.stride * 4;
-    uint8_t *srcData = data[0];
+    uint8_t *srcData = Data[0];
     int srcSize = linesize[0];
 
     /*

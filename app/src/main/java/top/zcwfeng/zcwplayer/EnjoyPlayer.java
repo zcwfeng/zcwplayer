@@ -13,6 +13,7 @@ public class EnjoyPlayer {
         this.nativeHandle = nativeInit();
     }
 
+    // 获取媒体文件音视频信息，准备好解码器
     public void prepare() {
         prepare(nativeHandle);
     }
@@ -30,23 +31,20 @@ public class EnjoyPlayer {
     }
 
     public void stop() {
-
+        stop(nativeHandle);
     }
-
-    public void pause() {
-
-    }
-
 
     private native long nativeInit();
 
-    private native void setDataSource(long nativeHandl, String path);
+    private native void setDataSource(long nativeHandle, String path);
 
     private native void prepare(long nativeHandle);
 
     private native void start(long nativeHandle);
 
     private native void setSurface(long nativeHandle, Surface surface);
+
+    private native void stop(long nativeHandle);
 
 
     //-------------C++ 给Java 的各种回调，类似MediaPlayer.OnErrorListener等--
