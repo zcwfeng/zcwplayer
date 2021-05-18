@@ -8,7 +8,7 @@ JavaVM *javaVm = 0;
 //    TODO JNI adapt
 JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved){
     javaVm = vm;
-    return JNI_VERSION_1_4;
+    return JNI_VERSION_1_6;
 }
 
 

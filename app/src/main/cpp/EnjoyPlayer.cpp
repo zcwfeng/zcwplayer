@@ -17,14 +17,14 @@ EnjoyPlayer::EnjoyPlayer(JavaCallHelper *helper) : helper(helper) {
 }
 
 void EnjoyPlayer::setDataSource(const char *path_) {
-//    c 实现拷贝
+/*//    c 实现拷贝
 //    path = static_cast<char *>(malloc(strlen(path_) + 1));
 //    memset((void *)path,0,strlen(path_)+1);
 //    memcpy(path,path_,strlen(path_))
 
-    if (path) {
-        delete[] path;
-    }
+//    if (path) {
+//        delete[] path;
+//    }*/
     path = new char[strlen(path_) + 1];
     strcpy(path, path_);
 }
