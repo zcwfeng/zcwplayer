@@ -71,7 +71,9 @@ public:
     int size() {
         return q.size();
     }
-
+    /**
+     * 让外界清空队列
+     */
     void clear() {
         pthread_mutex_lock(&mutex);
         int size = q.size();

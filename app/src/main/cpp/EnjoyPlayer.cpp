@@ -150,7 +150,9 @@ void EnjoyPlayer::start() {
     }
     pthread_create(&startTask, 0, start_t, this);
 }
-
+/**
+ * start 播放子线程获取压缩包数据
+ */
 void EnjoyPlayer::_start() {
     int ret;
     while (isPlaying) {

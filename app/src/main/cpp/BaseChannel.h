@@ -47,6 +47,10 @@ public:
         frame_queue.setEnable(enable);
     }
 
+    /**
+     * 让子类自由使用释放frame
+     * @param frame
+     */
     static void releaseAvFrame(AVFrame *&frame) {
         if (frame) {
             av_frame_free(&frame);

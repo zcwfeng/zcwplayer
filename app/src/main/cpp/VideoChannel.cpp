@@ -39,6 +39,7 @@ void VideoChannel::decode() {
         if (!isPlaying) {
             break;
         }
+        // 生产太慢等一下数据
         if (!ret) {
             continue;
         }
@@ -113,12 +114,12 @@ void VideoChannel::_play() {
     // 缩放,格式转换
     SwsContext *swsContext = sws_getContext(avCodecContext->width,
                                             avCodecContext->height,
-                                            avCodecContext->pix_fmt,
+                                            avCodecContext->pix_fmt,//自动获取xxx.mp4等的像素格式AV_PIX_FMT_RGBA_y420p
                                             avCodecContext->width,
                                             avCodecContext->height,
                                             AV_PIX_FMT_RGBA,
-                                            SWS_FAST_BILINEAR,
-                                            0, 0, 0);
+                                            SWS_FAST_BILINEAR,//SWS_FAST_BILINEAR 或者 SWS_BILINEAR 算法
+                                            0, 0, 0);// SwsFilter效果用OpenGL做
     uint8_t *data[4];// 用来接受结果
     int linesize[4];
     av_image_alloc(data, linesize, avCodecContext->width,
@@ -136,6 +137,7 @@ void VideoChannel::_play() {
         if (!isPlaying) {
             break;
         }
+        // 原始包加入队列，需要等一下
         if (!ret) {
             continue;
         }
@@ -200,6 +202,7 @@ void VideoChannel::_onDraw(uint8_t **Data, int *linesize, int width, int height)
     ANativeWindow_setBuffersGeometry(window, width, height,
                                      WINDOW_FORMAT_RGBA_8888);
     ANativeWindow_Buffer buffer;
+    // 自己有缓冲区
     if (ANativeWindow_lock(window, &buffer, 0) != 0) {
         ANativeWindow_release(window);
         window = 0;
