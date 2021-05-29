@@ -105,7 +105,7 @@ void AudioChannel::decode() {
 
 void bqPlayerCallback(SLAndroidSimpleBufferQueueItf queue, void *pContext) {
     AudioChannel *audioChannel = static_cast<AudioChannel *>(pContext);
-    int dataSize = audioChannel->_getData();
+    int dataSize = audioChannel->_getPCMData();
     if (dataSize > 0) {
         (*queue)->Enqueue(queue, audioChannel->buffer, dataSize);
     }
@@ -204,10 +204,14 @@ void AudioChannel::_play() {
 
 }
 
-
-int AudioChannel::_getData() {
+/**
+ * 获取PCM数据，一旦获取到返回
+ * @return
+ */
+int AudioChannel::_getPCMData() {
     int dataSize;
     AVFrame *frame = 0;
+    // 因为isPlaying可能是否发生变化的，所以判断!isPlaying 同理ret也可能，因为我们是多线程
     while (isPlaying) {
         int ret = frame_queue.deQueue(frame);
         if (!isPlaying) {

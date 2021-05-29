@@ -37,7 +37,7 @@ public:
 
 private:
     void _play();
-    int _getData();
+    int _getPCMData();
     void _releaseOpenSL();
 private:
     pthread_t audioDecodeTask, audioPlayTask;
