@@ -149,7 +149,9 @@ void VideoChannel::_play() {
         //byte[][]
         // ffmpeg 标准额外延时，视频顺畅的刷新
         double extra_delay = frame->repeat_pict / (2 * fps);
-        double delay = extra_delay * frame_delay;
+        double fps_delay = 1.0 / fps;
+//        double delay = extra_delay * frame_delay;
+        double delay = fps_delay + extra_delay;
         // 音视频同步
         if (audioChannel) {
             // 值：就是pts 和音频中的一样，pts  优化后的数据 best_effort_timestamp

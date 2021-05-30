@@ -100,6 +100,10 @@ void EnjoyPlayer::_prepare() {
         if (parameters->codec_type == AVMEDIA_TYPE_AUDIO) {
             audioChannel = new AudioChannel(i, helper, codecContext, avStream->time_base);
         } else if (parameters->codec_type == AVMEDIA_TYPE_VIDEO) {
+            // 封面
+            if(parameters->codec_type == AV_DISPOSITION_ATTACHED_PIC){
+                continue;
+            }
             //avg_frame_rate 平均帧率
             double fps = av_q2d(avStream->avg_frame_rate);
             if (isnan(fps) || fps == 0) {

@@ -226,7 +226,8 @@ int AudioChannel::_getPCMData() {
         dataSize = nb * out_channels * out_sampleSize;
 
         // 播放这段音频的时间
-        clock = frame->pts * av_q2intfloat(time_base);
+//        clock = frame->pts * av_q2intfloat(time_base);
+        clock = frame->pts * av_q2d(time_base);
         // 假设：time_base {1,20} <-> pst = 1/20 为单位 <->1 秒钟分成20份
 
         break;

@@ -118,6 +118,24 @@ AudioChannel.cpp 初始化，声音三要素，转换AAC32bit --》 手机 16bit
     - 前三者相乘，结果==buffer开辟空间大小   说明上面步骤需要数据采样空间使用
 stop
 
+4. native内存优化和管理
+EnjoyPlayer.cpp (解封装)
+解封装：占用内存并不多，优化点不多
+重量级：AVFrame -->1920 * 1080 * 4 
+
+生产AVPacket 消费 AVPacket
+如果生产过快，来不及消费AVPacket队列会很大占用，优化点1
+
+AudioChannel.cpp (播放) 多线程，压缩包使用
+
+VideoChannel.cpp (播放) 多线程，压缩包使用
+
+JNICallbackHelper.cpp (管理回调)
+
+native-lib.cpp (JNI函数管理)
+
+
+
 ## 涉及到的点：
 
 1. 开启线程
@@ -139,9 +157,13 @@ stop
     ① 采样率 44100等上面说的
     ② 位声/采样格式大小 16bit==2字节
     ③ 声道数 2（人类2个耳朵）
-    音频压缩AAC，原始数据32bit，大部分44100，2个声道（32位计算用效率高，浮点运算）
-    手机格式，数据16bit，大部分44100，2个声道，目前显卡好的也要24bit
-    所以需要转换。
+    音频压缩AAC，原始数据32bit，大部分44100，2个声道（32位计算用效率高，浮点运算，缺点：空间大。优点：内容更加丰富）
+    手机格式，数据16bit，大部分44100，2个声道，目前显卡好的也要24bit，所以需要转换。
+    通过三要素，（一帧音频的大小4096）
+    一秒多少帧----> 1024 单通道样本数 计算：44100 / 1024 = 43.066(每秒 43帧)
+    一秒音频大小---> 44100 * 2(采样2个字节) * 2(双通道) = 17400Byte
+    一帧音频大小---> 1024 * 2 * 2 = 4096Byte
+    一秒有多少帧---> 4096 * 43.066 = 176398.336 (大致判断1s 43帧音频左右)
 9. FFmpeg 需要上下文 涉及 4个上下文：
     一，ffmpeg全局上下文。 AVFormatContext
     二，编解码上下文。 AVCodecContext
@@ -149,3 +171,13 @@ stop
     四，音频上下文.SwrContext
 10. 学习使用 FFmepg 拷贝代码
 cd FFmpeg root-> resampling_audio.c 等 去main查看
+11. 崩溃调试
+Fatal signal 11 (SIGSEGV), code 1, fault addr 0x30 in tid 339
+    -  data/tombstore_文件
+        搜索关键信息，能够定位到函数。
+    - adb 和 ndk 环境变量配置好
+    adb logcat | ndk-stack-sym (cmake 下的libnative-lib.so 文件路径)
+    `.../app/build/intermediates/cmake/debug/obj/armeabi-v7a/libnative-lib.so`
+    必须先要运行一下，然后才能定位到
+12. AV_DISPOSITION_ATTACHED_PIC 判断视频流，判断是封面跳过这一帧
+    可以用ffmpeg检测
